@@ -1,0 +1,87 @@
+<?php
+
+/**
+ * Implementation of hook_permission().
+ */
+function mysearch_permission() {
+  return array(
+    'access mysearch' => array(
+      'title'       => 'Access My Search',
+      'description' => 'Allows a user to access search results',
+    ),
+  );
+}
+
+
+/**
+ * Implementation of hook_menu().
+ */
+function mysearch_menu() {
+  $items['mysearch/%'] = array(
+    'title callback'   => 'mysearch_title',
+    'title arguments'  => array(1),
+    'page callback'    => 'mysearch_page',
+    'page arguments'   => array(1),
+    'access arguments' => array('access mysearch'),
+    'type'             => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+
+/**
+ * Title callback returns the title that contain the searching word.
+ */
+function mysearch_title($search_term) {
+  return t('Search results for "@search_term"', array('@search_term' => $search_term));
+}
+
+
+/**
+ * Menu callback provides a simple list of nodes matching the
+ * search term Example: hitting the URL:
+ *   http://domain.com/mysearch/example
+ * will return a list of links to nodes which have the word
+ * example in them.
+ */
+function mysearch_page($search_term) {
+  $results = _mysearch_get_results($search_term);
+
+  if ($results) {
+    $items = array();
+    foreach ($results as $row) {
+      $items[] = l($row->title, "node/{$row->nid}");
+    }
+
+    $out = theme('item_list', array(
+      'items' => $items
+    ));
+  }
+  else {
+    $out = t('Sorry, there are no matches for your search.');
+  }
+
+  return $out;
+}
+
+
+/**
+ * Helper function provides an object of nodes matching the
+ * search term.
+ */
+function _mysearch_get_results($search_term) {
+  $query = db_select('node', 'n');
+  $query->leftJoin('field_data_body', 'body', "n.nid = body.entity_id AND body.entity_type = 'node'");
+  $query->fields('n', array('nid', 'title'));
+
+  $db_or = db_or();
+  $db_or->condition('n.title', '%' . db_like($search_term) . '%', 'LIKE');
+  $db_or->condition('body.body_value', '%' . db_like($search_term) . '%', 'LIKE');
+
+  $query->condition($db_or);
+  $query->condition('n.status', NODE_PUBLISHED);
+
+  $results = $query->execute()->fetchAll();
+
+  return $results;
+}

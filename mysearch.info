@@ -1,0 +1,8 @@
+name = Mysearch
+description = Simple search module
+core = 7.x
+
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "examples"
+datestamp = "1471885766"
